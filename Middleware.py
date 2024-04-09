@@ -53,12 +53,14 @@ def start_server():
             # Aceptar conexiones entrantes en un bucle infinito
             while True:
                 client_socket, client_address = server_socket.accept()
-                print("Conexión entrante de:", client_address)
+                connection_time = time.strftime('%Y-%m-%d %H:%M:%S')
+                print(f"Conexión entrante de {client_address} a las {connection_time}")
                 # Manejar la conexión del cliente en un hilo separado
                 client_thread = threading.Thread(target=handle_client, args=(client_socket,))
                 client_thread.start()
     except Exception as e:
         print("Error al iniciar el servidor:", e)
+
 
 def connect_to_remote_server(local_ipv4):
     try:
@@ -87,6 +89,8 @@ def connect_to_remote_server(local_ipv4):
                         break
                     message_with_timestamp = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] {message}"
                     client_socket.sendall(message_with_timestamp.encode())
+                    # Guardar el mensaje enviado en el archivo de texto
+                    save_message("localhost", message_with_timestamp)
                     # Recibir la respuesta del servidor remoto
                     response = client_socket.recv(1024)
                     print("Respuesta del servidor remoto:", response.decode())
@@ -108,6 +112,8 @@ def handle_client(client_socket):
             if '[' in data.decode() and ']' in data.decode():
                 timestamp = data.decode().split('[')[1].split(']')[0]
                 print("Timestamp del mensaje:", timestamp)
+            # Guardar el mensaje recibido en el archivo de texto
+            save_message(client_socket.getpeername()[0], data.decode())
             # Si el cliente envía 'exit', salir del bucle y cerrar la conexión
             if data.decode().strip().lower() == 'exit':
                 break
@@ -119,6 +125,11 @@ def handle_client(client_socket):
         # Cerrar el socket del cliente
         client_socket.close()
         print("Conexión con el cliente cerrada.")
+
+def save_message(ip_address, message):
+    with open("messages.txt", "a") as file:
+        file.write(f"IP: {ip_address}, Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}, Mensaje: {message}\n")
+
 
 def print_history():
     try:
