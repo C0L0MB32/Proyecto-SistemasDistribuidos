@@ -1,12 +1,16 @@
+import sys
 import socket
 import threading
 import time
 from getIP import get_ipv4
-
+from connection import conectar_base_datos, cerrar_conexion
+from modificarBD import *
+from Usuario import menu_user
+from Admin import menu_admin
 def main():
     # Obtener la dirección IPv4 del host
     ipv4 = get_ipv4()
-
+    baseDeDatos=conectar_base_datos()
     # Iniciar servidor en un hilo
     server_thread = threading.Thread(target=start_server)
     server_thread.start()
@@ -15,7 +19,9 @@ def main():
         print("\nMenú:")
         print("1. Conectarse a un servidor remoto")
         print("2. Mostrar historial de mensajes")
-        print("3. Salir")
+        print("3. Acceso Admin")
+        print("4. Acceso Usuario")
+        print("5. Salir")
 
         choice = input("Seleccione una opción: ")
 
@@ -25,8 +31,13 @@ def main():
             print("\nHistorial de mensajes:")
             print_history()
         elif choice == '3':
+            menu_admin(baseDeDatos)
+        elif choice == '4':
+            menu_user(baseDeDatos)
+        elif choice == '5':
             print("Saliendo del programa...")
-            break
+            cerrar_conexion(baseDeDatos)
+            sys.exit(0) 
         else:
             print("Opción inválida. Por favor, seleccione una opción válida.")
 
