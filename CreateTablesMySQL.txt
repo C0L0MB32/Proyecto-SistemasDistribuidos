@@ -26,9 +26,15 @@ CREATE TABLE TICKETS (
     id INT AUTO_INCREMENT PRIMARY KEY,
     usuario_id INT,
     ingeniero_id INT,
+    dispositivo_id INT,  -- Nuevo campo para el ID del dispositivo
     descripcion TEXT,
     fecha DATE,
+    sucursal VARCHAR(15),
     status VARCHAR(20) DEFAULT 'Pendiente',
     FOREIGN KEY (usuario_id) REFERENCES USUARIOS(id),
-    FOREIGN KEY (ingeniero_id) REFERENCES INGENIEROS(id)
+    FOREIGN KEY (ingeniero_id) REFERENCES INGENIEROS(id),
+    FOREIGN KEY (dispositivo_id) REFERENCES DISPOSITIVOS(id)  -- Clave foránea para el ID del dispositivo
 );
+
+
+

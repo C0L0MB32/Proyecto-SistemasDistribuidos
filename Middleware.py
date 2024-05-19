@@ -7,6 +7,7 @@ from connection import conectar_base_datos, cerrar_conexion
 from modificarBD import *
 from Usuario import menu_user
 from Admin import menu_admin
+from Ingeniero import menu_ingeniero
 def main():
     # Obtener la dirección IPv4 del host
     ipv4 = get_ipv4()
@@ -21,7 +22,8 @@ def main():
         print("2. Mostrar historial de mensajes")
         print("3. Acceso Admin")
         print("4. Acceso Usuario")
-        print("5. Salir")
+        print("5. Acceso Ingeniero")
+        print("6. Salir")
 
         choice = input("Seleccione una opción: ")
 
@@ -33,8 +35,10 @@ def main():
         elif choice == '3':
             menu_admin(baseDeDatos)
         elif choice == '4':
-            menu_user(baseDeDatos)
+            menu_user(baseDeDatos,ipv4)
         elif choice == '5':
+            menu_ingeniero(baseDeDatos)
+        elif choice == '6':
             print("Saliendo del programa...")
             cerrar_conexion(baseDeDatos)
             sys.exit(0) 

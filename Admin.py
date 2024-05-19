@@ -17,7 +17,8 @@ def menu_admin(conexion):
         print("12. Eliminar dispositivo")
         print("13. Ver tickets")
         print("14. Eliminar ticket")
-        print("15. Salir")
+        print("15. Consultar folios de tickets")
+        print("16. Salir")
 
         opcion = input("Seleccione una opción: ")
 
@@ -50,6 +51,8 @@ def menu_admin(conexion):
         elif opcion == '14':
             eliminar_ticket(conexion, obtener_id())
         elif opcion == '15':
+            consultar_folios(conexion)
+        elif opcion == '16':
             print("¡Hasta luego, administrador!")
             break
         else:

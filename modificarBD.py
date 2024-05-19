@@ -116,14 +116,14 @@ def insertar_datos_dispositivos(conexion, modelo, marca, anio, sucursal):
     except mysql.connector.Error as error:
         print("Error al insertar datos de dispositivo:", error)
 
-def insertar_datos_tickets(conexion,usuario_id, ingeniero_id, descripcion, fecha):
+def insertar_datos_tickets(conexion,usuario_id, ingeniero_id, dispositivo_id, descripcion, fecha,sucursal):
     try:
         cursor = conexion.cursor()
         id=obtener_siguiente_id_ticket(conexion)
         # Ejemplo de inserción de datos en la tabla TICKETS
-        sql_insert_query = """INSERT INTO TICKETS (id, usuario_id, ingeniero_id, descripcion, fecha) 
-                              VALUES (%s, %s, %s, %s, %s)"""
-        valores = (id, usuario_id, ingeniero_id, descripcion, fecha)
+        sql_insert_query = """INSERT INTO TICKETS (id, usuario_id, ingeniero_id, dispositivo_id, descripcion, fecha, sucursal) 
+                              VALUES (%s, %s, %s, %s, %s, %s)"""
+        valores = (id, usuario_id, ingeniero_id, dispositivo_id, descripcion, fecha, sucursal)
         cursor.execute(sql_insert_query, valores)
         conexion.commit()
         print("Datos de ticket insertados correctamente")
@@ -244,15 +244,78 @@ def consultar_ticket_por_id_user(conexion, id_user):
     try:
         cursor = conexion.cursor()
 
-        # Consultar ticket por ID
+        # Consultar todos los tickets por ID de usuario
         cursor.execute("SELECT * FROM TICKETS WHERE usuario_id = %s", (id_user,))
-        ticket = cursor.fetchone()
-        print(ticket)
-        return ticket
+        tickets = cursor.fetchall()
+        
+        if tickets:
+            print("Tickets encontrados:")
+            for ticket in tickets:
+                print(ticket)
+        else:
+            print("No se encontraron tickets para este usuario.")
+        
+        return tickets
 
     except mysql.connector.Error as error:
-        print("Error al consultar ticket:", error)
+        print("Error al consultar tickets:", error)
         return None
+
+
+def consultar_ticket_por_id_ingeniero(conexion, ingeniero_id):
+    try:
+        cursor = conexion.cursor()
+
+        # Consultar los tickets asignados al ingeniero
+        cursor.execute("SELECT * FROM TICKETS WHERE ingeniero_id = %s", (ingeniero_id,))
+        tickets = cursor.fetchall()
+
+        if tickets:
+            print("Tickets asignados:")
+            for ticket in tickets:
+                print(f"ID: {ticket[0]}, Descripción: {ticket[3]}, Fecha: {ticket[4]}, Estado: {ticket[5]}")
+        else:
+            print("No hay tickets asignados para resolver.")
+
+    except mysql.connector.Error as error:
+        print("Error al obtener los tickets asignados:", error)
+
+def consultar_folios(conexion):
+    try:
+        cursor = conexion.cursor()
+
+        # Consultar todos los tickets con su sucursal
+        cursor.execute("SELECT id, usuario_id, ingeniero_id, sucursal FROM TICKETS")
+        tickets = cursor.fetchall()
+        
+        if tickets:
+            print("Folios encontrados:")
+            for ticket in tickets:
+                id_ticket, id_usuario, id_ingeniero, sucursal = ticket
+                folio = generar_folio(id_usuario, id_ingeniero, sucursal, id_ticket)
+                print(f"Folio: {folio}")
+        else:
+            print("No se encontraron tickets.")
+        
+        return tickets
+
+    except mysql.connector.Error as error:
+        print("Error al consultar folios:", error)
+        return None
+
+def generar_folio(id_usuario, id_ingeniero, sucursal, id_ticket):
+    # Formatea los valores para asegurar que tengan el formato adecuado
+    id_usuario = str(id_usuario).zfill(5)
+    id_ingeniero = str(id_ingeniero).zfill(5)
+    sucursal = sucursal.zfill(15)
+    id_ticket = str(id_ticket).zfill(5)
+    
+    # Concatena los valores para formar el folio
+    folio = f"{id_usuario}-{id_ingeniero}-{sucursal}-{id_ticket}"
+    return folio
+
+
+
 
 def editar_datos_usuario(conexion, id_usuario, nuevo_nombre, nuevo_apellido, nuevo_correo, nuevo_telefono):
     try:
@@ -302,15 +365,15 @@ def editar_datos_dispositivo(conexion, id_dispositivo, nuevo_modelo, nueva_marca
     except mysql.connector.Error as error:
         print("Error al actualizar datos de dispositivo:", error)
 
-def editar_datos_ticket(conexion, id_ticket, nueva_descripcion, nuevo_estado, nuevo_ingeniero_id):
+def editar_datos_ticket(conexion, id_ticket, nueva_descripcion, nuevo_estado, nuevo_ingeniero_id, nuevo_dispositivo_id):
     try:
         cursor = conexion.cursor()
 
         # Ejemplo de actualización de datos de ticket en la tabla TICKETS
         sql_update_query = """UPDATE TICKETS 
-                             SET descripcion = %s, status = %s, ingeniero_id = %s
+                             SET descripcion = %s, status = %s, ingeniero_id = %s, dispositivo_id = %s, sucursal = %s
                              WHERE id = %s"""
-        valores = (nueva_descripcion, nuevo_estado, nuevo_ingeniero_id, id_ticket)
+        valores = (nueva_descripcion, nuevo_estado, nuevo_ingeniero_id, nuevo_dispositivo_id, sucursal, id_ticket)
         cursor.execute(sql_update_query, valores)
         conexion.commit()
         print("Datos de ticket actualizados correctamente")

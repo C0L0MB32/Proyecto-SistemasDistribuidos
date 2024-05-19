@@ -1,6 +1,6 @@
 from modificarBD import *
 
-def menu_user(conexion):
+def menu_user(conexion,sucursal):
     # Solicitar al usuario que ingrese su ID
     id_usuario = input("Por favor, ingrese su ID de usuario: ")
 
@@ -28,7 +28,7 @@ def menu_user(conexion):
             elif opcion == '3':
                 ver_dispositivos(conexion)
             elif opcion == '4':
-                abrir_ticket_soporte(conexion, usuario)
+                abrir_ticket_soporte(conexion, usuario,input("ID de dispositivo: "),sucursal)
             elif opcion == '5':
                 consultar_ticket_por_id_user(conexion, usuario[0])
             elif opcion == '6':
@@ -37,7 +37,7 @@ def menu_user(conexion):
             else:
                 print("Opción inválida. Por favor, seleccione una opción válida.")
     else:
-        print("Usuario no encontrado. Por favor, verifique su ID.")
+        print("Usuario no encontrado. Por favor, verifique su ID.") 
 
 def ver_perfil(usuario):
     print("Perfil del usuario:")
@@ -58,21 +58,29 @@ def editar_perfil(conexion, usuario):
 
     print("Perfil actualizado correctamente")
 
-def abrir_ticket_soporte(conexion, usuario):
+def abrir_ticket_soporte(conexion, usuario, id_dispositivo, sucursal):
     print("Crear ticket de soporte:")
     descripcion = input("Descripción del problema: ")
 
     try:
         cursor = conexion.cursor()
 
+        # Verificar si existe un ticket pendiente para el usuario
+        cursor.execute("SELECT COUNT(*) FROM TICKETS WHERE usuario_id = %s AND status = 'Pendiente'", (usuario[0],))
+        ticket_pendiente = cursor.fetchone()[0]
+
+        if ticket_pendiente > 0:
+            print("Ya existe un ticket pendiente para este usuario.")
+            return
+
         # Seleccionar al ingeniero con la menor cantidad de tickets asignados
         cursor.execute("SELECT id FROM INGENIEROS ORDER BY (SELECT COUNT(*) FROM TICKETS WHERE ingeniero_id = INGENIEROS.id) LIMIT 1")
         ingeniero_id = cursor.fetchone()[0]
 
         # Insertar el nuevo ticket con el ingeniero asignado
-        sql_insert_query = """INSERT INTO TICKETS (usuario_id, ingeniero_id, descripcion, fecha, status) 
-                              VALUES (%s, %s, %s, CURRENT_DATE, 'Pendiente')"""
-        valores = (usuario[0], ingeniero_id, descripcion)
+        sql_insert_query = """INSERT INTO TICKETS (usuario_id, ingeniero_id, dispositivo_id, descripcion, fecha, status, sucursal) 
+                              VALUES (%s, %s, %s, %s,CURRENT_DATE, 'Pendiente',%s)"""
+        valores = (usuario[0], ingeniero_id, id_dispositivo, descripcion,sucursal)
         cursor.execute(sql_insert_query, valores)
         conexion.commit()
         print("Ticket de soporte creado correctamente")
