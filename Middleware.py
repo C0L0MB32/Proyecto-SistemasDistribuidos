@@ -8,40 +8,41 @@ from modificarBD import *
 from Usuario import menu_user
 from Admin import menu_admin
 from Ingeniero import menu_ingeniero
+
 def main():
     # Obtener la dirección IPv4 del host
     ipv4 = get_ipv4()
-    baseDeDatos=conectar_base_datos()
+    baseDeDatos = conectar_base_datos()
     # Iniciar servidor en un hilo
     server_thread = threading.Thread(target=start_server)
     server_thread.start()
 
+    # Intentar conectarse a los servidores remotos al iniciar el programa
+    threading.Thread(target=connect_to_remote_servers, args=(ipv4,)).start()
+
     while True:
         print("\nMenú:")
-        print("1. Conectarse a un servidor remoto")
-        print("2. Mostrar historial de mensajes")
-        print("3. Acceso Admin")
-        print("4. Acceso Usuario")
-        print("5. Acceso Ingeniero")
-        print("6. Salir")
+        print("1. Mostrar historial de mensajes")
+        print("2. Acceso Admin")
+        print("3. Acceso Usuario")
+        print("4. Acceso Ingeniero")
+        print("5. Salir")
 
         choice = input("Seleccione una opción: ")
 
         if choice == '1':
-            connect_to_remote_server(ipv4)
-        elif choice == '2':
             print("\nHistorial de mensajes:")
             print_history()
-        elif choice == '3':
+        elif choice == '2':
             menu_admin(baseDeDatos)
+        elif choice == '3':
+            menu_user(baseDeDatos, ipv4)
         elif choice == '4':
-            menu_user(baseDeDatos,ipv4)
-        elif choice == '5':
             menu_ingeniero(baseDeDatos)
-        elif choice == '6':
+        elif choice == '5':
             print("Saliendo del programa...")
             cerrar_conexion(baseDeDatos)
-            sys.exit(0) 
+            sys.exit(0)
         else:
             print("Opción inválida. Por favor, seleccione una opción válida.")
 
@@ -76,43 +77,34 @@ def start_server():
     except Exception as e:
         print("Error al iniciar el servidor:", e)
 
+def connect_to_remote_server(ip, port):
+    try:
+        # Crear un socket TCP/IP
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
+            # Conectar el socket al servidor remoto
+            client_socket.connect((ip, int(port)))
+            print(f"Conexión establecida con el servidor remoto en {ip} en el puerto {port}")
+            # Mantener la conexión abierta sin enviar ni recibir mensajes visibles
+            while True:
+                time.sleep(1)
+    except Exception as e:
+        print(f"Error al conectar con el servidor remoto {ip}:{port}:", e)
 
-def connect_to_remote_server(local_ipv4):
+def connect_to_remote_servers(local_ipv4):
     try:
         # Leer las direcciones IP y puertos desde el archivo
         with open("remote_servers.txt", "r") as file:
-            remote_servers = [line.strip().split() for line in file.readlines() if not line.strip().split()[0] == local_ipv4]
+            remote_servers = [line.strip().split() for line in file.readlines() if line.strip().split()[0] != local_ipv4]
 
-        print("\nSeleccione el servidor remoto:")
-        for i, (ip, port) in enumerate(remote_servers, 1):
-            print(f"{i}. {ip}:{port}")
+        # Conectarse a cada servidor remoto en un hilo separado
+        for ip, port in remote_servers:
+            thread = threading.Thread(target=connect_to_remote_server, args=(ip, port))
+            thread.daemon = True  # Permitir que el programa termine aunque estos hilos sigan en ejecución
+            thread.start()
 
-        choice = int(input("Seleccione una opción: "))
-        if 1 <= choice <= len(remote_servers):
-            remote_address, port = remote_servers[choice - 1]
-            port = int(port)
-
-            # Crear un socket TCP/IP
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
-                # Conectar el socket al servidor remoto
-                client_socket.connect((remote_address, port))
-                print("Conexión establecida con el servidor remoto en", remote_address, "en el puerto", port)
-                # Enviar mensajes al servidor remoto
-                while True:
-                    message = input("Introduce un mensaje para enviar al servidor remoto (o 'exit' para salir): ")
-                    if message.lower() == 'exit':
-                        break
-                    message_with_timestamp = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] {message}"
-                    client_socket.sendall(message_with_timestamp.encode())
-                    # Guardar el mensaje enviado en el archivo de texto
-                    save_message("localhost", message_with_timestamp)
-                    # Recibir la respuesta del servidor remoto
-                    response = client_socket.recv(1024)
-                    print("Respuesta del servidor remoto:", response.decode())
-        else:
-            print("Opción inválida.")
+        print("Conexiones a servidores remotos iniciadas.")
     except Exception as e:
-        print("Error al conectar con el servidor remoto:", e)
+        print("Error al conectar con los servidores remotos:", e)
 
 def handle_client(client_socket):
     try:
@@ -121,18 +113,15 @@ def handle_client(client_socket):
             data = client_socket.recv(1024)
             if not data:
                 break
-            # Imprimir el mensaje recibido del cliente
-            print("Mensaje recibido del cliente:", data.decode())
-            # Si el mensaje contiene un timestamp, imprímelo
-            if '[' in data.decode() and ']' in data.decode():
-                timestamp = data.decode().split('[')[1].split(']')[0]
-                print("Timestamp del mensaje:", timestamp)
+            # Procesar el mensaje recibido del cliente sin imprimirlo
+            message = data.decode()
+            timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
             # Guardar el mensaje recibido en el archivo de texto
-            save_message(client_socket.getpeername()[0], data.decode())
+            save_message(client_socket.getpeername()[0], message, timestamp)
             # Si el cliente envía 'exit', salir del bucle y cerrar la conexión
-            if data.decode().strip().lower() == 'exit':
+            if message.strip().lower() == 'exit':
                 break
-            # Enviar de vuelta el mensaje al cliente (eco)
+            # Enviar de vuelta el mensaje al cliente (eco) sin mostrar en pantalla
             client_socket.sendall("Mensaje recibido".encode())
     except Exception as e:
         print("Error al manejar la conexión del cliente:", e)
@@ -141,10 +130,9 @@ def handle_client(client_socket):
         client_socket.close()
         print("Conexión con el cliente cerrada.")
 
-def save_message(ip_address, message):
+def save_message(ip_address, message, timestamp):
     with open("messages.txt", "a") as file:
-        file.write(f"IP: {ip_address}, Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}, Mensaje: {message}\n")
-
+        file.write(f"IP: {ip_address}, Timestamp: {timestamp}, Mensaje: {message}\n")
 
 def print_history():
     try:
