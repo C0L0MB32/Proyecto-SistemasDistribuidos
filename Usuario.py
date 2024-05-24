@@ -65,12 +65,12 @@ def abrir_ticket_soporte(conexion, usuario, id_dispositivo, sucursal):
     try:
         cursor = conexion.cursor()
 
-        # Verificar si existe un ticket pendiente para el usuario
-        cursor.execute("SELECT COUNT(*) FROM TICKETS WHERE usuario_id = %s AND status = 'Pendiente'", (usuario[0],))
-        ticket_pendiente = cursor.fetchone()[0]
+        # Verificar si existe un ticket pendiente para el dispositivo
+        cursor.execute("SELECT COUNT(*) FROM TICKETS WHERE dispositivo_id = %s AND status = 'Pendiente'", (id_dispositivo,))
+        ticket_pendiente_dispositivo = cursor.fetchone()[0]
 
-        if ticket_pendiente > 0:
-            print("Ya existe un ticket pendiente para este usuario.")
+        if ticket_pendiente_dispositivo > 0:
+            print("Ya existe un ticket pendiente para este dispositivo.")
             return
 
         # Seleccionar al ingeniero con la menor cantidad de tickets asignados
@@ -79,11 +79,12 @@ def abrir_ticket_soporte(conexion, usuario, id_dispositivo, sucursal):
 
         # Insertar el nuevo ticket con el ingeniero asignado
         sql_insert_query = """INSERT INTO TICKETS (usuario_id, ingeniero_id, dispositivo_id, descripcion, fecha, status, sucursal) 
-                              VALUES (%s, %s, %s, %s,CURRENT_DATE, 'Pendiente',%s)"""
-        valores = (usuario[0], ingeniero_id, id_dispositivo, descripcion,sucursal)
+                              VALUES (%s, %s, %s, %s, CURRENT_DATE, 'Pendiente', %s)"""
+        valores = (usuario[0], ingeniero_id, id_dispositivo, descripcion, sucursal)
         cursor.execute(sql_insert_query, valores)
         conexion.commit()
         print("Ticket de soporte creado correctamente")
     except mysql.connector.Error as error:
         print("Error al crear ticket de soporte:", error)
-
+    finally:
+        cursor.close()

@@ -8,7 +8,7 @@ from modificarBD import *
 from Usuario import menu_user
 from Admin import menu_admin
 from Ingeniero import menu_ingeniero
-
+from coordinar import initialize_connections, handle_incoming_messages
 def main():
     # Obtener la dirección IPv4 del host
     ipv4 = get_ipv4()
@@ -16,9 +16,11 @@ def main():
     # Iniciar servidor en un hilo
     server_thread = threading.Thread(target=start_server)
     server_thread.start()
-
+    
     # Intentar conectarse a los servidores remotos al iniciar el programa
-    threading.Thread(target=connect_to_remote_servers, args=(ipv4,)).start()
+    #threading.Thread(target=connect_to_remote_servers, args=(ipv4,)).start()
+    initialize_connections(ipv4)
+    threading.Thread(target=handle_incoming_messages).start()
 
     while True:
         print("\nMenú:")
@@ -65,7 +67,7 @@ def start_server():
             server_socket.bind((ip, port))
             # Escuchar conexiones entrantes
             server_socket.listen(5)
-            print(f"Servidor escuchando en {ip} en el puerto {port}")
+            print(f"Servidor con id: {ip} en el puerto {port}")
             # Aceptar conexiones entrantes en un bucle infinito
             while True:
                 client_socket, client_address = server_socket.accept()
